@@ -114,9 +114,10 @@ async function startXeonBotInc() {
                 return msg?.message || ""
             },
             msgRetryCounterCache,
-            defaultQueryTimeoutMs: 60000,
-            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 300000,
+            connectTimeoutMs: 300000,
             keepAliveIntervalMs: 10000,
+            qrTimeout: 300000,
         })
 
         // Save credentials when they update
