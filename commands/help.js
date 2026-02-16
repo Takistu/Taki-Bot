@@ -4,16 +4,18 @@ const path = require('path');
 
 async function helpCommand(sock, chatId, message) {
     const helpMessage = `
-╔═══════════════════╗
-   *🤖 ${settings.botName || 'KnightBot-MD'}*  
+╔══════════════════╗
+   *🤖 ${settings.botName || 'TakiBot'}*  
    Version: *${settings.version || '3.0.0'}*
-   by ${settings.botOwner || 'Mr Unique Hacker'}
+   by ${settings.botOwner || 'Mr Taki Taki'}
    YT : ${global.ytch}
-╚═══════════════════╝
+   Visca Barca e visca 
+   Tanger 💙❤️
+╚══════════════════╝
 
 *Available Commands:*
 
-╔═══════════════════╗
+╔══════════════════╗
 🌐 *General Commands*:
 ║ ➤ .help or .menu
 ║ ➤ .ping
@@ -35,9 +37,9 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .ss <link>
 ║ ➤ .jid
 ║ ➤ .url
-╚═══════════════════╝ 
+╚══════════════════╝ 
 
-╔═══════════════════╗
+╔══════════════════╗
 👮‍♂️ *Admin Commands*:
 ║ ➤ .ban @user
 ║ ➤ .promote @user
@@ -63,9 +65,9 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .setgdesc <description>
 ║ ➤ .setgname <new name>
 ║ ➤ .setgpp (reply to image)
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 🔒 *Owner Commands*:
 ║ ➤ .mode <public/private>
 ║ ➤ .clearsession
@@ -84,9 +86,9 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .pmblocker setmsg <text>
 ║ ➤ .setmention <reply to msg>
 ║ ➤ .mention <on/off>
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 🎨 *Image/Sticker Commands*:
 ║ ➤ .blur <image>
 ║ ➤ .simage <reply to sticker>
@@ -100,9 +102,9 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .emojimix <emj1>+<emj2>
 ║ ➤ .igs <insta link>
 ║ ➤ .igsc <insta link>
-╚═══════════════════╝  
+╚══════════════════╝  
 
-╔═══════════════════╗
+╔══════════════════╗
 🖼️ *Pies Commands*:
 ║ ➤ .pies <country>
 ║ ➤ .china 
@@ -112,7 +114,7 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .hijab
 ╚═══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 🎮 *Game Commands*:
 ║ ➤ .tictactoe @user
 ║ ➤ .hangman
@@ -121,18 +123,18 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .answer <answer>
 ║ ➤ .truth
 ║ ➤ .dare
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 🤖 *AI Commands*:
 ║ ➤ .gpt <question>
 ║ ➤ .gemini <question>
 ║ ➤ .imagine <prompt>
 ║ ➤ .flux <prompt>
 ║ ➤ .sora <prompt>
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 🎯 *Fun Commands*:
 ║ ➤ .compliment @user
 ║ ➤ .insult @user
@@ -145,9 +147,9 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .ship @user
 ║ ➤ .simp @user
 ║ ➤ .stupid @user [text]
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 🔤 *Textmaker*:
 ║ ➤ .metallic <text>
 ║ ➤ .ice <text>
@@ -167,9 +169,9 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .blackpink <text>
 ║ ➤ .glitch <text>
 ║ ➤ .fire <text>
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 📥 *Downloader*:
 ║ ➤ .play <song_name>
 ║ ➤ .song <song_name>
@@ -179,9 +181,9 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .tiktok <link>
 ║ ➤ .video <song name>
 ║ ➤ .ytmp4 <Link>
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 🧩 *MISC*:
 ║ ➤ .heart
 ║ ➤ .horny
@@ -199,9 +201,9 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .jail 
 ║ ➤ .passed 
 ║ ➤ .triggered
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 🖼️ *ANIME*:
 ║ ➤ .nom 
 ║ ➤ .poke 
@@ -211,18 +213,16 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .hug 
 ║ ➤ .wink 
 ║ ➤ .facepalm 
-╚═══════════════════╝
+╚══════════════════╝
 
-╔═══════════════════╗
+╔══════════════════╗
 💻 *Github Commands:*
 ║ ➤ .git
 ║ ➤ .github
 ║ ➤ .sc
 ║ ➤ .script
 ║ ➤ .repo
-╚═══════════════════╝
-
-Join our channel for updates:`;
+╚══════════════════╝`;
 
     try {
         const imagePath = path.join(__dirname, '../assets/bot_image.jpg');
@@ -232,30 +232,12 @@ Join our channel for updates:`;
             
             await sock.sendMessage(chatId, {
                 image: imageBuffer,
-                caption: helpMessage,
-                contextInfo: {
-                    forwardingScore: 1,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363161513685998@newsletter',
-                        newsletterName: 'KnightBot MD',
-                        serverMessageId: -1
-                    }
-                }
+                caption: helpMessage
             },{ quoted: message });
         } else {
             console.error('Bot image not found at:', imagePath);
             await sock.sendMessage(chatId, { 
-                text: helpMessage,
-                contextInfo: {
-                    forwardingScore: 1,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363161513685998@newsletter',
-                        newsletterName: 'KnightBot MD by Mr Unique Hacker',
-                        serverMessageId: -1
-                    } 
-                }
+                text: helpMessage
             });
         }
     } catch (error) {
