@@ -121,8 +121,13 @@ async function startXeonBotInc() {
             qrTimeout: 300000,
         })
 
-        // Initialize socket properties early
-        XeonBotInc.public = true
+        // Initialize socket properties early with proper property definition
+        Object.defineProperty(XeonBotInc, 'public', {
+            value: true,
+            writable: true,
+            enumerable: true,
+            configurable: true
+        })
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
@@ -214,39 +219,29 @@ async function startXeonBotInc() {
 
     XeonBotInc.serializeM = (m) => smsg(XeonBotInc, m, store)
 
-    // Handle pairing code
+    // Prepare pairing code if needed
+    let pairingPhoneNumber = null
     if (pairingCode && !state.creds.registered) {
         if (useMobile) throw new Error('Cannot use pairing code with mobile api')
 
-        let phoneNumber
         if (!!global.phoneNumber) {
-            phoneNumber = global.phoneNumber
+            pairingPhoneNumber = global.phoneNumber
         } else {
-            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
+            pairingPhoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
         }
 
-        // Clean the phone number - remove any non-digit characters
-        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+        // Clean the phone number
+        pairingPhoneNumber = pairingPhoneNumber.replace(/[^0-9]/g, '')
 
-        // Validate the phone number using awesome-phonenumber
+        // Validate the phone number
         const pn = require('awesome-phonenumber');
-        if (!pn('+' + phoneNumber).isValid()) {
+        if (!pn('+' + pairingPhoneNumber).isValid()) {
             console.log(chalk.red('Invalid phone number. Please enter your full international number (e.g., 15551234567 for US, 447911123456 for UK, etc.) without + or spaces.'));
             process.exit(1);
         }
-
-        setTimeout(async () => {
-            try {
-                let code = await XeonBotInc.requestPairingCode(phoneNumber)
-                code = code?.match(/.{1,4}/g)?.join("-") || code
-                console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-                console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
-            } catch (error) {
-                console.error('Error requesting pairing code:', error)
-                console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
-            }
-        }, 3000)
     }
+
+    let pairingCodeRequested = false
 
     // Connection handling
     XeonBotInc.ev.on('connection.update', async (s) => {
@@ -258,6 +253,21 @@ async function startXeonBotInc() {
         
         if (connection === 'connecting') {
             console.log(chalk.yellow('🔄 Connecting to WhatsApp...'))
+            
+            // Request pairing code on first connection attempt
+            if (pairingCodeRequested === false && pairingPhoneNumber) {
+                pairingCodeRequested = true
+                try {
+                    await delay(1000)
+                    let code = await XeonBotInc.requestPairingCode(pairingPhoneNumber)
+                    code = code?.match(/.{1,4}/g)?.join("-") || code
+                    console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
+                    console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
+                } catch (error) {
+                    console.error('Error requesting pairing code:', error.message)
+                    console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
+                }
+            }
         }
         
         if (connection == "open") {
