@@ -144,7 +144,10 @@ async function startXeonBotInc() {
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
 
-    store.bind(XeonBotInc.ev)
+        // Set bot to public mode (allows anyone to use commands)
+        XeonBotInc.public = true
+
+        store.bind(XeonBotInc.ev)
 
     // Message handling
     XeonBotInc.ev.on('messages.upsert', async chatUpdate => {
