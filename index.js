@@ -22,6 +22,7 @@ const { imageToWebp, videoToWebp, writeExifImg, writeExifVid } = require('./lib/
 const { smsg, isUrl, generateMessageTag, getBuffer, getSizeMedia, fetch, await, sleep, reSize } = require('./lib/myfunc')
 const {
     default: makeWASocket,
+    useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
     generateForwardMessageContent,
@@ -35,7 +36,6 @@ const {
     makeCacheableSignalKeyStore,
     delay
 } = require("@whiskeysockets/baileys")
-const { useMongoDBAuthState } = require('./lib/mongodb-auth-state')
 const NodeCache = require("node-cache")
 // Using a lightweight persisted store instead of makeInMemoryStore (compat across versions)
 const pino = require("pino")
@@ -76,6 +76,7 @@ let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 
 global.botname = "Taki BOT"
 global.themeemoji = "•"
+const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
 const useMobile = process.argv.includes("--mobile")
 
 // Only create readline interface if we're in an interactive environment
@@ -93,47 +94,37 @@ const question = (text) => {
 async function startXeonBotInc() {
     try {
         let { version, isLatest } = await fetchLatestBaileysVersion()
-        const { state, saveCreds } = await useMongoDBAuthState('takibot')
+        const { state, saveCreds } = await useMultiFileAuthState(`./session`)
         const msgRetryCounterCache = new NodeCache()
 
         const XeonBotInc = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
+            printQRInTerminal: !pairingCode,
             browser: ["Ubuntu", "Chrome", "20.0.04"],
             auth: {
                 creds: state.creds,
                 keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
             },
             markOnlineOnConnect: true,
+            generateHighQualityLinkPreview: true,
             syncFullHistory: false,
+            getMessage: async (key) => {
+                let jid = jidNormalizedUser(key.remoteJid)
+                let msg = await store.loadMessage(jid, key.id)
+                return msg?.message || ""
+            },
+            msgRetryCounterCache,
             defaultQueryTimeoutMs: 300000,
             connectTimeoutMs: 300000,
             keepAliveIntervalMs: 10000,
+            qrTimeout: 300000,
         })
-
-        // Request pairing code if not authenticated
-        if (!state.creds.registered) {
-            console.log(chalk.cyan('📱 Requesting pairing code for: ' + global.phoneNumber))
-            try {
-                const pairingCode = await XeonBotInc.requestPairingCode(global.phoneNumber)
-                console.log(chalk.black(chalk.bgGreen(`\n Your Pairing Code : ${pairingCode} \n`)))
-                console.log(chalk.yellow(`Please enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above\n`))
-            } catch (err) {
-                console.error('Error requesting pairing code:', err.message)
-            }
-        }
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
 
-        store.bind(XeonBotInc.ev)
-
-        // Register getMessage handler
-        XeonBotInc.getMessage = async (key) => {
-            let jid = jidNormalizedUser(key.remoteJid)
-            let msg = await store.loadMessage(jid, key.id)
-            return msg?.message || ""
-        }
+    store.bind(XeonBotInc.ev)
 
     // Message handling
     XeonBotInc.ev.on('messages.upsert', async chatUpdate => {
@@ -145,7 +136,13 @@ async function startXeonBotInc() {
                 await handleStatus(XeonBotInc, chatUpdate);
                 return;
             }
-            // Allow all messages - no private/public mode check needed
+            // In private mode, only block non-group messages (allow groups for moderation)
+            // Note: XeonBotInc.public is not synced, so we check mode in main.js instead
+            // This check is kept for backward compatibility but mainly blocks DMs
+            if (!XeonBotInc.public && !mek.key.fromMe && chatUpdate.type === 'notify') {
+                const isGroup = mek.key?.remoteJid?.endsWith('@g.us')
+                if (!isGroup) return // Block DMs in private mode, but allow group messages
+            }
             if (mek.key.id.startsWith('BAE5') && mek.key.id.length === 16) return
 
             // Clear message retry cache to prevent memory bloat
@@ -216,10 +213,23 @@ async function startXeonBotInc() {
 
     // Connection handling
     XeonBotInc.ev.on('connection.update', async (s) => {
-        const { connection, lastDisconnect, qr } = s
+        const { connection, lastDisconnect, qr, isNewLogin } = s
+        
+        // Request pairing code when not registered
+        if (!state.creds.registered && !pairingRequested) {
+            pairingRequested = true
+            try {
+                console.log(chalk.cyan('📱 Requesting pairing code for: ' + global.phoneNumber))
+                const code = await XeonBotInc.requestPairingCode(global.phoneNumber)
+                console.log(chalk.black(chalk.bgGreen(`\n Your Pairing Code: ${code} \n`)))
+                console.log(chalk.yellow('Enter this code in WhatsApp: Settings > Linked Devices > Link a Device\n'))
+            } catch (err) {
+                console.error('⚠️ Pairing code error:', err.message)
+            }
+        }
         
         if (qr) {
-            console.log(chalk.yellow('📱 QR Code generated. Please scan with WhatsApp.'))
+            console.log(chalk.yellow('📱 QR Code available (not displayed in terminal)'))
         }
         
         if (connection === 'connecting') {
@@ -267,10 +277,10 @@ async function startXeonBotInc() {
             
             if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
                 try {
-                    // Session is stored in MongoDB, no need to delete local files
-                    console.log(chalk.yellow('Session cleared from database. Please re-authenticate.'))
+                    rmSync('./session', { recursive: true, force: true })
+                    console.log(chalk.yellow('Session folder deleted. Please re-authenticate.'))
                 } catch (error) {
-                    console.error('Error clearing session:', error)
+                    console.error('Error deleting session:', error)
                 }
                 console.log(chalk.red('Session logged out. Please re-authenticate.'))
             }
