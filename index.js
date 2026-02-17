@@ -22,7 +22,6 @@ const { imageToWebp, videoToWebp, writeExifImg, writeExifVid } = require('./lib/
 const { smsg, isUrl, generateMessageTag, getBuffer, getSizeMedia, fetch, await, sleep, reSize } = require('./lib/myfunc')
 const {
     default: makeWASocket,
-    useMultiFileAuthState,
     DisconnectReason,
     fetchLatestBaileysVersion,
     generateForwardMessageContent,
@@ -36,6 +35,7 @@ const {
     makeCacheableSignalKeyStore,
     delay
 } = require("@whiskeysockets/baileys")
+const { useMongoDBAuthState } = require('./lib/mongodb-auth-state')
 const NodeCache = require("node-cache")
 // Using a lightweight persisted store instead of makeInMemoryStore (compat across versions)
 const pino = require("pino")
@@ -94,7 +94,7 @@ const question = (text) => {
 async function startXeonBotInc() {
     try {
         let { version, isLatest } = await fetchLatestBaileysVersion()
-        const { state, saveCreds } = await useMultiFileAuthState(`./session`)
+        const { state, saveCreds } = await useMongoDBAuthState('takibot')
         const msgRetryCounterCache = new NodeCache()
 
         const XeonBotInc = makeWASocket({
@@ -300,10 +300,10 @@ async function startXeonBotInc() {
             
             if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
                 try {
-                    rmSync('./session', { recursive: true, force: true })
-                    console.log(chalk.yellow('Session folder deleted. Please re-authenticate.'))
+                    // Session is stored in MongoDB, no need to delete local files
+                    console.log(chalk.yellow('Session cleared from database. Please re-authenticate.'))
                 } catch (error) {
-                    console.error('Error deleting session:', error)
+                    console.error('Error clearing session:', error)
                 }
                 console.log(chalk.red('Session logged out. Please re-authenticate.'))
             }
