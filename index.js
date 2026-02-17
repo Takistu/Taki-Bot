@@ -129,6 +129,21 @@ async function startXeonBotInc() {
             configurable: true
         })
 
+        // Request pairing code immediately if needed (before connection attempt)
+        if (pairingCode && !state.creds.registered && pairingPhoneNumber) {
+            try {
+                console.log(chalk.cyan('📱 Requesting pairing code...'))
+                let code = await XeonBotInc.requestPairingCode(pairingPhoneNumber)
+                code = code?.match(/.{1,4}/g)?.join("-") || code
+                console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
+                console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
+            } catch (error) {
+                console.error('Error requesting pairing code:', error.message)
+                console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
+                process.exit(1)
+            }
+        }
+
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
 
@@ -241,8 +256,6 @@ async function startXeonBotInc() {
         }
     }
 
-    let pairingCodeRequested = false
-
     // Connection handling
     XeonBotInc.ev.on('connection.update', async (s) => {
         const { connection, lastDisconnect, qr } = s
@@ -253,21 +266,6 @@ async function startXeonBotInc() {
         
         if (connection === 'connecting') {
             console.log(chalk.yellow('🔄 Connecting to WhatsApp...'))
-            
-            // Request pairing code on first connection attempt
-            if (pairingCodeRequested === false && pairingPhoneNumber) {
-                pairingCodeRequested = true
-                try {
-                    await delay(1000)
-                    let code = await XeonBotInc.requestPairingCode(pairingPhoneNumber)
-                    code = code?.match(/.{1,4}/g)?.join("-") || code
-                    console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-                    console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
-                } catch (error) {
-                    console.error('Error requesting pairing code:', error.message)
-                    console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
-                }
-            }
         }
         
         if (connection == "open") {
