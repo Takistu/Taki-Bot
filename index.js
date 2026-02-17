@@ -100,14 +100,12 @@ async function startXeonBotInc() {
         const XeonBotInc = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
-            printQRInTerminal: !pairingCode,
             browser: ["Ubuntu", "Chrome", "20.0.04"],
             auth: {
                 creds: state.creds,
                 keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
             },
             markOnlineOnConnect: true,
-            generateHighQualityLinkPreview: true,
             syncFullHistory: false,
             getMessage: async (key) => {
                 let jid = jidNormalizedUser(key.remoteJid)
@@ -118,8 +116,30 @@ async function startXeonBotInc() {
             defaultQueryTimeoutMs: 300000,
             connectTimeoutMs: 300000,
             keepAliveIntervalMs: 10000,
-            qrTimeout: 300000,
         })
+
+        // Track if pairing code was requested
+        let pairingRequested = false
+
+        // Request pairing code after a short delay to let socket initialize
+        if (!state.creds.registered) {
+            setTimeout(async () => {
+                if (!pairingRequested) {
+                    pairingRequested = true
+                    try {
+                        console.log(chalk.cyan('📱 Requesting pairing code for: ' + global.phoneNumber))
+                        const code = await XeonBotInc.requestPairingCode(global.phoneNumber)
+                        console.log(chalk.black(chalk.bgGreen(`\n Your Pairing Code: ${code} \n`)))
+                        console.log(chalk.yellow('Enter this code in WhatsApp: Settings > Linked Devices > Link a Device\n'))
+                        console.log(chalk.yellow('Bot will keep trying to connect after you enter the code...\n'))
+                    } catch (err) {
+                        console.error('⚠️ Pairing code error:', err.message)
+                        console.log(chalk.yellow('Will retry on next connection attempt...\n'))
+                        pairingRequested = false
+                    }
+                }
+            }, 3000)
+        }
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
@@ -215,25 +235,12 @@ async function startXeonBotInc() {
     XeonBotInc.ev.on('connection.update', async (s) => {
         const { connection, lastDisconnect, qr, isNewLogin } = s
         
-        // Request pairing code when not registered
-        if (!state.creds.registered && !pairingRequested) {
-            pairingRequested = true
-            try {
-                console.log(chalk.cyan('📱 Requesting pairing code for: ' + global.phoneNumber))
-                const code = await XeonBotInc.requestPairingCode(global.phoneNumber)
-                console.log(chalk.black(chalk.bgGreen(`\n Your Pairing Code: ${code} \n`)))
-                console.log(chalk.yellow('Enter this code in WhatsApp: Settings > Linked Devices > Link a Device\n'))
-            } catch (err) {
-                console.error('⚠️ Pairing code error:', err.message)
-            }
+        if (connection === 'connecting') {
+            console.log(chalk.yellow('🔄 Connecting to WhatsApp...'))
         }
         
         if (qr) {
             console.log(chalk.yellow('📱 QR Code available (not displayed in terminal)'))
-        }
-        
-        if (connection === 'connecting') {
-            console.log(chalk.yellow('🔄 Connecting to WhatsApp...'))
         }
         
         if (connection == "open") {
@@ -273,19 +280,16 @@ async function startXeonBotInc() {
             const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut
             const statusCode = lastDisconnect?.error?.output?.statusCode
             
-            console.log(chalk.red(`Connection closed due to ${lastDisconnect?.error}, reconnecting ${shouldReconnect}`))
+            // Always reconnect if still waiting for pairing code authentication
+            const isWaitingForAuth = !state.creds.registered
+            
+            console.log(chalk.red(`Connection closed due to ${lastDisconnect?.error}, reconnecting ${shouldReconnect || isWaitingForAuth}`))
             
             if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
-                try {
-                    rmSync('./session', { recursive: true, force: true })
-                    console.log(chalk.yellow('Session folder deleted. Please re-authenticate.'))
-                } catch (error) {
-                    console.error('Error deleting session:', error)
-                }
-                console.log(chalk.red('Session logged out. Please re-authenticate.'))
+                console.log(chalk.red('Session logged out. Session stored in MongoDB, please request new pairing code on next start.'))
             }
             
-            if (shouldReconnect) {
+            if (shouldReconnect || isWaitingForAuth) {
                 console.log(chalk.yellow('Reconnecting...'))
                 await delay(5000)
                 startXeonBotInc()
