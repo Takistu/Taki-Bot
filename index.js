@@ -121,6 +121,10 @@ async function startXeonBotInc() {
             qrTimeout: 300000,
         })
 
+        // Initialize socket properties early
+        XeonBotInc.public = true
+        XeonBotInc.authState = { creds: state.creds, keys: state.keys }
+
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
 
@@ -208,8 +212,6 @@ async function startXeonBotInc() {
             (store.contacts[id] || {})
         return (withoutContact ? '' : v.name) || v.subject || v.verifiedName || PhoneNumber('+' + jid.replace('@s.whatsapp.net', '')).getNumber('international')
     }
-
-    XeonBotInc.public = true
 
     XeonBotInc.serializeM = (m) => smsg(XeonBotInc, m, store)
 
