@@ -105,29 +105,38 @@ async function startXeonBotInc() {
                 keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
             },
             markOnlineOnConnect: true,
-            generateHighQualityLinkPreview: true,
             syncFullHistory: false,
-            getMessage: async (key) => {
-                let jid = jidNormalizedUser(key.remoteJid)
-                let msg = await store.loadMessage(jid, key.id)
-                return msg?.message || ""
-            },
-            msgRetryCounterCache,
             defaultQueryTimeoutMs: 300000,
             connectTimeoutMs: 300000,
             keepAliveIntervalMs: 10000,
         })
 
-        // Set public mode immediately with getter to ensure it always works
-        Object.defineProperty(XeonBotInc, 'public', {
-            get() { return true },
-            configurable: true
-        })
+        // Request pairing code if not authenticated
+        if (!state.creds.registered) {
+            console.log(chalk.cyan('📱 Requesting pairing code for: ' + global.phoneNumber))
+            try {
+                const pairingCode = await XeonBotInc.requestPairingCode(global.phoneNumber)
+                console.log(chalk.black(chalk.bgGreen(`\n Your Pairing Code : ${pairingCode} \n`)))
+                console.log(chalk.yellow(`Please enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above\n`))
+            } catch (err) {
+                console.error('Error requesting pairing code:', err.message)
+            }
+        }
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
 
-    store.bind(XeonBotInc.ev)
+        store.bind(XeonBotInc.ev)
+
+        // Register getMessage handler
+        XeonBotInc.getMessage = async (key) => {
+            let jid = jidNormalizedUser(key.remoteJid)
+            let msg = await store.loadMessage(jid, key.id)
+            return msg?.message || ""
+        }
+
+        // Set public mode
+        XeonBotInc.public = true
 
     // Message handling
     XeonBotInc.ev.on('messages.upsert', async chatUpdate => {
