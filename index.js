@@ -99,7 +99,6 @@ async function startXeonBotInc() {
         const XeonBotInc = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
-            printQRInTerminal: true,
             browser: ["Ubuntu", "Chrome", "20.0.04"],
             auth: {
                 creds: state.creds,
@@ -117,16 +116,10 @@ async function startXeonBotInc() {
             defaultQueryTimeoutMs: 300000,
             connectTimeoutMs: 300000,
             keepAliveIntervalMs: 10000,
-            qrTimeout: 300000,
         })
 
-        // Initialize socket properties early with proper property definition
-        Object.defineProperty(XeonBotInc, 'public', {
-            value: true,
-            writable: true,
-            enumerable: true,
-            configurable: true
-        })
+        // Set public mode immediately
+        XeonBotInc.public = true
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
