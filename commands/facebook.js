@@ -14,7 +14,7 @@ async function facebookCommand(sock, chatId, message) {
         }
 
         // Validate Facebook URL
-        if (!url.includes('facebook.com')) {
+        if (!url.includes('facebook.com') && !url.includes('fb.watch')) {
             return await sock.sendMessage(chatId, { 
                 text: "That is not a Facebook link."
             }, { quoted: message });
@@ -25,7 +25,7 @@ async function facebookCommand(sock, chatId, message) {
             react: { text: '🔄', key: message.key }
         });
 
-        // Resolve share/short URLs to their final destination first
+        // Resolve the final URL (follow redirects)
         let resolvedUrl = url;
         try {
             const res = await axios.get(url, { timeout: 20000, maxRedirects: 10, headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -245,4 +245,4 @@ async function facebookCommand(sock, chatId, message) {
     }
 }
 
-module.exports = facebookCommand; 
+module.exports = facebookCommand;

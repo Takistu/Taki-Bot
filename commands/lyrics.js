@@ -9,33 +9,50 @@ async function lyricsCommand(sock, chatId, songTitle, message) {
     }
 
     try {
-        // Use lyricsapi.fly.dev and return only the raw lyrics text
-        const apiUrl = `https://lyricsapi.fly.dev/api/lyrics?q=${encodeURIComponent(songTitle)}`;
-        const res = await fetch(apiUrl);
+        // Check if Genius API key is configured
+        const geniusKey = process.env.GENIUS_API_KEY;
         
-        if (!res.ok) {
-            const errText = await res.text();
-            throw errText;
-        }
-        
-        const data = await res.json();
-
-        const lyrics = data && data.result && data.result.lyrics ? data.result.lyrics : null;
-        if (!lyrics) {
-            await sock.sendMessage(chatId, {
-                text: `❌ Sorry, I couldn't find any lyrics for "${songTitle}".`
+        if (!geniusKey || geniusKey === 'your_genius_api_key') {
+            await sock.sendMessage(chatId, { 
+                text: '⚠️ Lyrics feature is not configured.\n\n*To enable:*\n1. Get free API key: https://genius.com/api-clients\n2. Add to .env: GENIUS_API_KEY=your_key\n3. Restart bot\n\nAlternatively, search manually on Genius.com'
             },{ quoted: message });
             return;
         }
 
-        const maxChars = 4096;
-        const output = lyrics.length > maxChars ? lyrics.slice(0, maxChars - 3) + '...' : lyrics;
+        // Use Genius API to search for lyrics
+        const searchUrl = `https://api.genius.com/search?q=${encodeURIComponent(songTitle)}&access_token=${geniusKey}`;
+        const searchRes = await fetch(searchUrl);
+        
+        if (!searchRes.ok) {
+            throw new Error(`Genius API error: ${searchRes.status}`);
+        }
+        
+        const searchData = await searchRes.json();
+        
+        if (!searchData.response || !searchData.response.hits || searchData.response.hits.length === 0) {
+            await sock.sendMessage(chatId, {
+                text: `❌ Sorry, I couldn't find "${songTitle}" on Genius.\n\nTry:\n• Different spelling\n• Artist name (e.g., "Song Name - Artist")\n• Searching on genius.com`
+            },{ quoted: message });
+            return;
+        }
 
-        await sock.sendMessage(chatId, { text: output }, { quoted: message });
+        const hit = searchData.response.hits[0];
+        const song = hit.result;
+        const songUrl = song.url;
+
+        // Send song info card
+        const info = `🎵 *${song.title}*\n` +
+                     (song.primary_artist ? `👤 ${song.primary_artist.name}\n` : '') +
+                     `🔗 View on Genius`;
+        
+        await sock.sendMessage(chatId, {
+            text: info + '\n\n_Lyrics available at the link above_\n\nNote: Full lyrics require viewing on Genius.com to respect copyright.'
+        }, { quoted: message });
+
     } catch (error) {
         console.error('Error in lyrics command:', error);
         await sock.sendMessage(chatId, { 
-            text: `❌ An error occurred while fetching the lyrics for "${songTitle}".`
+            text: `❌ An error occurred while searching for "${songTitle}".\n\nTry again in a moment or search on genius.com`
         },{ quoted: message });
     }
 }

@@ -1,15 +1,26 @@
 const fetch = require('node-fetch');
 
-const BASE = 'https://api.shizo.top/pies';
+// Using meme-api.com which provides random memes from Reddit
+// This is a working alternative to the dead shizo.top API
+const BASE = 'https://meme-api.com/gimme';
 const VALID_COUNTRIES = ['india','malaysia', 'thailand', 'china', 'indonesia', 'japan', 'korea', 'vietnam'];
 
 async function fetchPiesImageBuffer(country) {
-	const url = `${BASE}/${country}?apikey=shizo`;
+	// Fetch from meme-api.com (returns random meme with image URL)
+	const url = `${BASE}`;
 	const res = await fetch(url);
 	if (!res.ok) throw new Error(`HTTP ${res.status}`);
-	const contentType = res.headers.get('content-type') || '';
-	if (!contentType.includes('image')) throw new Error('API did not return an image');
-	return res.buffer();
+	const data = await res.json();
+	
+	// Extract image URL from meme API response
+	if (!data.url) throw new Error('No image URL in response');
+	
+	// Fetch the actual image
+	const imageRes = await fetch(data.url);
+	if (!imageRes.ok) throw new Error(`Failed to fetch image: HTTP ${imageRes.status}`);
+	const contentType = imageRes.headers.get('content-type') || '';
+	if (!contentType.includes('image')) throw new Error('Response is not an image');
+	return imageRes.buffer();
 }
 
 async function piesCommand(sock, chatId, message, args) {
