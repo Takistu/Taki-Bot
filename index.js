@@ -118,8 +118,11 @@ async function startXeonBotInc() {
             keepAliveIntervalMs: 10000,
         })
 
-        // Set public mode immediately
-        XeonBotInc.public = true
+        // Set public mode immediately with getter to ensure it always works
+        Object.defineProperty(XeonBotInc, 'public', {
+            get() { return true },
+            configurable: true
+        })
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
