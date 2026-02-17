@@ -76,7 +76,6 @@ let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 
 global.botname = "Taki BOT"
 global.themeemoji = "•"
-const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
 const useMobile = process.argv.includes("--mobile")
 
 // Only create readline interface if we're in an interactive environment
@@ -100,7 +99,7 @@ async function startXeonBotInc() {
         const XeonBotInc = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
-            printQRInTerminal: !pairingCode,
+            printQRInTerminal: true,
             browser: ["Ubuntu", "Chrome", "20.0.04"],
             auth: {
                 creds: state.creds,
@@ -128,21 +127,6 @@ async function startXeonBotInc() {
             enumerable: true,
             configurable: true
         })
-
-        // Request pairing code immediately if needed (before connection attempt)
-        if (pairingCode && !state.creds.registered && pairingPhoneNumber) {
-            try {
-                console.log(chalk.cyan('📱 Requesting pairing code...'))
-                let code = await XeonBotInc.requestPairingCode(pairingPhoneNumber)
-                code = code?.match(/.{1,4}/g)?.join("-") || code
-                console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-                console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
-            } catch (error) {
-                console.error('Error requesting pairing code:', error.message)
-                console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
-                process.exit(1)
-            }
-        }
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
@@ -233,28 +217,6 @@ async function startXeonBotInc() {
     }
 
     XeonBotInc.serializeM = (m) => smsg(XeonBotInc, m, store)
-
-    // Prepare pairing code if needed
-    let pairingPhoneNumber = null
-    if (pairingCode && !state.creds.registered) {
-        if (useMobile) throw new Error('Cannot use pairing code with mobile api')
-
-        if (!!global.phoneNumber) {
-            pairingPhoneNumber = global.phoneNumber
-        } else {
-            pairingPhoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
-        }
-
-        // Clean the phone number
-        pairingPhoneNumber = pairingPhoneNumber.replace(/[^0-9]/g, '')
-
-        // Validate the phone number
-        const pn = require('awesome-phonenumber');
-        if (!pn('+' + pairingPhoneNumber).isValid()) {
-            console.log(chalk.red('Invalid phone number. Please enter your full international number (e.g., 15551234567 for US, 447911123456 for UK, etc.) without + or spaces.'));
-            process.exit(1);
-        }
-    }
 
     // Connection handling
     XeonBotInc.ev.on('connection.update', async (s) => {
