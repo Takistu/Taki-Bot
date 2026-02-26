@@ -1,4 +1,9 @@
 const fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execPromise = promisify(exec);
 
 async function memeCommand(sock, chatId, message, query = '') {
     try {
@@ -15,10 +20,10 @@ async function memeCommand(sock, chatId, message, query = '') {
 
         const response = await fetch(apiUrl);
         const contentType = response.headers.get('content-type');
-        const buffer = await response.buffer();
+        let buffer = await response.buffer();
 
         // Use file-type if available or fallback to content-type header
-        let mime = contentType;
+        let mime = contentType || '';
         try {
             const FileType = require('file-type');
             const type = await FileType.fromBuffer(buffer);
@@ -34,11 +39,37 @@ async function memeCommand(sock, chatId, message, query = '') {
 
         const caption = `> Here's your meme ${captionSuffix}`;
 
-        if (mime.includes('video') || mime.includes('gif')) {
+        // If it's a GIF, convert to MP4 for WhatsApp compatibility
+        if (mime.includes('gif')) {
+            const tmpDir = path.join(process.cwd(), 'tmp');
+            if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+
+            const inputPath = path.join(tmpDir, `meme_${Date.now()}.gif`);
+            const outputPath = path.join(tmpDir, `meme_${Date.now()}.mp4`);
+
+            fs.writeFileSync(inputPath, buffer);
+
+            try {
+                // Convert GIF to MP4 using FFmpeg
+                await execPromise(`ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" "${outputPath}"`);
+                buffer = fs.readFileSync(outputPath);
+                mime = 'video/mp4';
+
+                // Cleanup
+                if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+                if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+            } catch (err) {
+                console.error('FFmpeg conversion failed:', err);
+                // Fallback to sending as image if conversion fails
+                mime = 'image/gif';
+            }
+        }
+
+        if (mime.includes('video') || mime.includes('mp4')) {
             await sock.sendMessage(chatId, {
                 video: buffer,
                 caption: caption,
-                gifPlayback: mime.includes('gif'),
+                gifPlayback: true,
                 buttons: buttons,
                 headerType: 1
             }, { quoted: message });
@@ -46,8 +77,6 @@ async function memeCommand(sock, chatId, message, query = '') {
             await sock.sendMessage(chatId, {
                 sticker: buffer
             }, { quoted: message });
-            // For stickers, we might want to send the caption separately if buttons are needed
-            // But buttons with stickers are tricky in some WhatsApp versions
         } else if (mime.includes('image')) {
             await sock.sendMessage(chatId, {
                 image: buffer,
@@ -56,7 +85,6 @@ async function memeCommand(sock, chatId, message, query = '') {
                 headerType: 1
             }, { quoted: message });
         } else {
-            // If it's not a recognized media type, it might be a JSON response or error
             if (query) {
                 await sock.sendMessage(chatId, {
                     text: `❌ No memes found for "${query}". Try a different search term!`

@@ -2,13 +2,32 @@ const axios = require('axios');
 
 module.exports = async function (sock, chatId, message, city) {
     try {
-        const apiKey = '4902c0f2550f58298ad4146a92b65e10';  // Replace with your OpenWeather API Key
-        const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`);
-        const weather = response.data;
-        const weatherText = `Weather in ${weather.name}: ${weather.weather[0].description}. Temperature: ${weather.main.temp}°C.`;
-        await sock.sendMessage(chatId, { text: weatherText }, { quoted: message }   );
+        const response = await axios.get(`https://api.shizo.top/tools/weather?apikey=shizo&city=${encodeURIComponent(city)}`);
+        const data = response.data.data;
+
+        if (data && data.status) {
+            const weather = data.weather[0];
+            const weatherText = `
+🌍 *Weather in ${data.city}, ${data.country}*
+
+🌡️ *Temperature:* ${data.temperature}°C
+🌡️ *Feels Like:* ${data.feels_like}°C
+☁️ *Condition:* ${weather.main} (${weather.description})
+💧 *Humidity:* ${data.humidity}%
+🌬️ *Wind:* ${data.wind.speed} m/s
+👁️ *Visibility:* ${data.visibility / 1000} km
+☁️ *Clouds:* ${data.clouds}%
+
+🌅 *Sunrise:* ${new Date(data.sunrise).toLocaleTimeString()}
+🌇 *Sunset:* ${new Date(data.sunset).toLocaleTimeString()}
+            `.trim();
+
+            await sock.sendMessage(chatId, { text: weatherText }, { quoted: message });
+        } else {
+            await sock.sendMessage(chatId, { text: `❌ Could not find weather data for "${city}".` }, { quoted: message });
+        }
     } catch (error) {
         console.error('Error fetching weather:', error);
-        await sock.sendMessage(chatId, { text: 'Sorry, I could not fetch the weather right now.' }, { quoted: message } );
+        await sock.sendMessage(chatId, { text: '❌ Sorry, I could not fetch the weather right now.' }, { quoted: message });
     }
 };
