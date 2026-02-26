@@ -6,12 +6,12 @@ const path = require('path');
 
 async function githubCommand(sock, chatId, message) {
   try {
-    const res = await fetch('https://api.github.com/repos/mruniquehacker/Knightbot-md');
+    const res = await fetch('https://api.github.com/repos/Takistu/Taki-Bot');
     if (!res.ok) throw new Error('Error fetching repository data');
     const json = await res.json();
 
     let txt = `*乂  Taki Bot  乂*\n\n`;
-    txt += `✩  *Name* : ${json.name}\n`;
+    txt += `✩  *Name* : Taki-Bot\n`;
     txt += `✩  *Watchers* : ${json.watchers_count}\n`;
     txt += `✩  *Size* : ${(json.size / 1024).toFixed(2)} MB\n`;
     txt += `✩  *Last Updated* : ${moment(json.updated_at).format('DD/MM/YY - HH:mm:ss')}\n`;
