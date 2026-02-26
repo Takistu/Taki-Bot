@@ -39,6 +39,7 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .url
 ║ ➤ .bitly <link>
 ║ ➤ .tinyurl <link>
+║ ➤ .domaine <domain>
 ╚══════════════════╝ 
 
 ╔══════════════════╗

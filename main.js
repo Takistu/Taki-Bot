@@ -143,6 +143,7 @@ const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
 const shorturlCommand = require('./commands/shorturl');
+const domainCommand = require('./commands/domain');
 
 // Global settings
 global.packname = settings.packname;
@@ -950,6 +951,12 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 {
                     const urlToShort = userMessage.slice(9).trim();
                     await shorturlCommand(sock, chatId, message, 'tinyurl', urlToShort);
+                }
+                break;
+            case userMessage.startsWith('.domaine'):
+                {
+                    const domain = userMessage.slice(9).trim();
+                    await domainCommand(sock, chatId, message, domain);
                 }
                 break;
             case userMessage.startsWith('.areact') || userMessage.startsWith('.autoreact') || userMessage.startsWith('.autoreaction'):
