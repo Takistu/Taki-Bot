@@ -132,29 +132,6 @@ async function startXeonBotInc() {
             keepAliveIntervalMs: 30000,
         })
 
-        // Track if pairing code was requested
-        let pairingRequested = false
-
-        // Request pairing code after a short delay to let socket initialize
-        if (!state.creds.registered) {
-            setTimeout(async () => {
-                if (!pairingRequested) {
-                    pairingRequested = true
-                    try {
-                        console.log(chalk.cyan('📱 Requesting pairing code for: ' + global.phoneNumber))
-                        const code = await XeonBotInc.requestPairingCode(global.phoneNumber)
-                        console.log(chalk.black(chalk.bgGreen(`\n Your Pairing Code: ${code} \n`)))
-                        console.log(chalk.yellow('Enter this code in WhatsApp: Settings > Linked Devices > Link a Device\n'))
-                        console.log(chalk.yellow('Bot will keep trying to connect after you enter the code...\n'))
-                    } catch (err) {
-                        console.error('⚠️ Pairing code error:', err.message)
-                        console.log(chalk.yellow('Will retry on next connection attempt...\n'))
-                    }
-                    setTimeout(() => pairingRequested = false, 30000) // Give user 30s before generating another request code
-                }
-            }, 5000)
-        }
-
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
 
@@ -258,6 +235,18 @@ async function startXeonBotInc() {
 
             if (qr) {
                 console.log(chalk.yellow('📱 QR Code available (not displayed in terminal)'))
+                if (!state.creds.registered) {
+                    try {
+                        console.log(chalk.cyan('📱 Requesting pairing code for: ' + global.phoneNumber))
+                        const code = await XeonBotInc.requestPairingCode(global.phoneNumber)
+                        console.log(chalk.black(chalk.bgGreen(`\n Your Pairing Code: ${code} \n`)))
+                        console.log(chalk.yellow('Enter this code in WhatsApp: Settings > Linked Devices > Link a Device\n'))
+                        console.log(chalk.yellow('Bot will keep trying to connect after you enter the code...\n'))
+                    } catch (err) {
+                        console.error('⚠️ Pairing code error:', err.message)
+                        console.log(chalk.yellow('Will retry on next connection attempt...\n'))
+                    }
+                }
             }
 
             if (connection == "open") {
@@ -303,7 +292,20 @@ async function startXeonBotInc() {
                 console.log(chalk.red(`Connection closed due to ${lastDisconnect?.error}, reconnecting ${shouldReconnect || isWaitingForAuth}`))
 
                 if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
-                    console.log(chalk.red('Session logged out. Session stored in MongoDB, please request new pairing code on next start.'))
+                    console.log(chalk.red('Session logged out or corrupted. Deleting session data...'))
+                    try {
+                        if (process.env.MONGODB_URI) {
+                            const { MongoClient } = require('mongodb');
+                            const mongoClient = new MongoClient(process.env.MONGODB_URI);
+                            await mongoClient.connect();
+                            await mongoClient.db('whatsapp_bot').collection('auth_info').drop().catch(() => { });
+                            console.log('MongoDB session collection wiped. Please scan/pair again on the next restart.');
+                        } else {
+                            fs.rmSync('./session', { recursive: true, force: true });
+                        }
+                    } catch (e) {
+                        console.error('Failed to delete session', e);
+                    }
                 }
 
                 if (shouldReconnect || isWaitingForAuth) {
