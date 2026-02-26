@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const { fetchJson } = require('../lib/myfunc');
 
 async function shorturlCommand(sock, chatId, message, type, url) {
     if (!url) {
@@ -13,13 +13,17 @@ async function shorturlCommand(sock, chatId, message, type, url) {
             apiUrl = `https://api.shizo.top/tools/tinyshort?apikey=shizo&url=${encodeURIComponent(url)}`;
         }
 
-        const response = await fetch(apiUrl);
-        const json = await response.json();
+        const json = await fetchJson(apiUrl);
 
-        if (json.data && json.data.status) {
-            await sock.sendMessage(chatId, { text: `✅ *Success!*\n\n🔗 *Original:* ${url}\n✂️ *Shortened:* ${json.data.result}` }, { quoted: message });
+        // Handle both nested and flat response structures
+        const status = json.data ? json.data.status : json.status;
+        const result = json.data ? json.data.result : json.result;
+
+        if (status) {
+            await sock.sendMessage(chatId, { text: `✅ *Success!*\n\n🔗 *Original:* ${url}\n✂️ *Shortened:* ${result}` }, { quoted: message });
         } else {
-            await sock.sendMessage(chatId, { text: '❌ Failed to shorten URL. Please check the URL and try again.' }, { quoted: message });
+            console.error(`Shorten API error (${type}):`, json);
+            await sock.sendMessage(chatId, { text: '❌ Failed to shorten URL. The service might be down or the URL is invalid.' }, { quoted: message });
         }
     } catch (error) {
         console.error(`Error in ${type} command:`, error);

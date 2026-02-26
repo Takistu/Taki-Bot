@@ -1,9 +1,11 @@
-const axios = require('axios');
+const { fetchJson } = require('../lib/myfunc');
 
 module.exports = async function (sock, chatId, message, city) {
     try {
-        const response = await axios.get(`https://api.shizo.top/tools/weather?apikey=shizo&city=${encodeURIComponent(city)}`);
-        const data = response.data.data;
+        const json = await fetchJson(`https://api.shizo.top/tools/weather?apikey=shizo&city=${encodeURIComponent(city)}`);
+
+        // Handle both nested and flat response structures
+        const data = json.data || json;
 
         if (data && data.status) {
             const weather = data.weather[0];
@@ -24,7 +26,8 @@ module.exports = async function (sock, chatId, message, city) {
 
             await sock.sendMessage(chatId, { text: weatherText }, { quoted: message });
         } else {
-            await sock.sendMessage(chatId, { text: `❌ Could not find weather data for "${city}".` }, { quoted: message });
+            console.error('Weather API error:', json);
+            await sock.sendMessage(chatId, { text: `❌ Could not find weather data for "${city}". Please check the city name.` }, { quoted: message });
         }
     } catch (error) {
         console.error('Error fetching weather:', error);
