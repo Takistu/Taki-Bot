@@ -4,12 +4,12 @@ const ANTICALL_PATH = './data/anticall.json';
 
 function readState() {
     try {
-        if (!fs.existsSync(ANTICALL_PATH)) return { enabled: false };
+        if (!fs.existsSync(ANTICALL_PATH)) return { enabled: true };
         const raw = fs.readFileSync(ANTICALL_PATH, 'utf8');
         const data = JSON.parse(raw || '{}');
-        return { enabled: !!data.enabled };
+        return { enabled: data.enabled !== undefined ? !!data.enabled : true };
     } catch {
-        return { enabled: false };
+        return { enabled: true };
     }
 }
 
@@ -17,7 +17,7 @@ function writeState(enabled) {
     try {
         if (!fs.existsSync('./data')) fs.mkdirSync('./data', { recursive: true });
         fs.writeFileSync(ANTICALL_PATH, JSON.stringify({ enabled: !!enabled }, null, 2));
-    } catch {}
+    } catch { }
 }
 
 async function anticallCommand(sock, chatId, message, args) {
