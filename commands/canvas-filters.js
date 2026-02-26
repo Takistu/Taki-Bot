@@ -1,6 +1,9 @@
 const { downloadMediaMessage } = require('@whiskeysockets/baileys');
 const axios = require('axios');
-const { uploadImage } = require('../lib/uploadImage');
+const fs = require('fs');
+const path = require('path');
+const sharp = require('sharp');
+const { TelegraPh } = require('../lib/uploader');
 
 async function canvasFilterCommand(sock, chatId, message, type, args = []) {
     let targetMessage = message;
@@ -27,9 +30,12 @@ async function canvasFilterCommand(sock, chatId, message, type, args = []) {
         return;
     }
 
+    const tmpDir = path.join(process.cwd(), 'tmp');
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+    const inputPath = path.join(tmpDir, `canvas_in_${Date.now()}.png`);
+
     try {
-        // Show wait message
-        await sock.sendMessage(chatId, { text: `⏳ Applying ${type} filter...` }, { quoted: message });
+        await sock.sendMessage(chatId, { text: `⏳ Processing ${type}...` }, { quoted: message });
 
         // Download the image
         const buffer = await downloadMediaMessage(targetMessage, 'buffer', {}, {
@@ -37,17 +43,18 @@ async function canvasFilterCommand(sock, chatId, message, type, args = []) {
             reuploadRequest: sock.updateMediaMessage
         });
 
-        if (!buffer) {
-            throw new Error('Failed to download image');
-        }
+        if (!buffer) throw new Error('Failed to download image');
 
-        // Upload to get a URL (Some Random API needs a URL)
-        const imageUrl = await uploadImage(buffer);
+        // Ensure it's PNG for the API
+        await sharp(buffer).png().toFile(inputPath);
+
+        // Upload to get a URL
+        const imageUrl = await TelegraPh(inputPath);
 
         // Map filter types to API endpoints
-        let apiUrl = '';
         const baseUrl = 'https://some-random-api.com/canvas/filter';
         const userArg = args[0] || '';
+        let apiUrl = '';
 
         switch (type) {
             case 'pixelate':
@@ -60,7 +67,6 @@ async function canvasFilterCommand(sock, chatId, message, type, args = []) {
                 apiUrl = `${baseUrl}/blurple2?avatar=${encodeURIComponent(imageUrl)}`;
                 break;
             case 'color':
-                // The color endpoint expects a hex code without the #
                 const hexColor = userArg.replace('#', '') || 'FF0000';
                 apiUrl = `${baseUrl}/color?color=${hexColor}&avatar=${encodeURIComponent(imageUrl)}`;
                 break;
@@ -79,19 +85,39 @@ async function canvasFilterCommand(sock, chatId, message, type, args = []) {
                 apiUrl = `${baseUrl}/blur?avatar=${encodeURIComponent(imageUrl)}`;
         }
 
-        const response = await axios.get(apiUrl, { responseType: 'arraybuffer' });
+        const response = await axios.get(apiUrl, {
+            responseType: 'arraybuffer',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+
+        // Check if the response is actually an image
+        const contentType = response.headers['content-type'];
+        if (!contentType || !contentType.includes('image')) {
+            let errorMsg = 'Unknown API error';
+            try {
+                errorMsg = Buffer.from(response.data).toString();
+            } catch (e) { }
+            console.error('API Error Response:', errorMsg);
+            throw new Error(`API error: ${errorMsg}`);
+        }
 
         // Send the filtered image
         await sock.sendMessage(chatId, {
             image: Buffer.from(response.data),
-            caption: `✅ *${type.toUpperCase()}* filter applied successfully!${userArg ? ` (Value: ${userArg})` : ''}`
+            caption: `✅ *${type.toUpperCase()}* applied!`
         }, { quoted: message });
 
     } catch (error) {
         console.error(`Error in ${type} command:`, error);
         await sock.sendMessage(chatId, {
-            text: `❌ Failed to apply ${type} filter. Please try again later.`
+            text: `❌ Error: ${error.message || 'Failed to apply filter'}`
         }, { quoted: message });
+    } finally {
+        if (fs.existsSync(inputPath)) {
+            try { fs.unlinkSync(inputPath); } catch (e) { }
+        }
     }
 }
 
