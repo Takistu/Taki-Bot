@@ -7,12 +7,15 @@ async function domainCommand(sock, chatId, message, domain) {
 
     try {
         const json = await fetchJson(`https://api.shizo.top/tools/domain-check?apikey=shizo&domain=${encodeURIComponent(domain)}`);
-        const data = json.data;
 
-        if (data) {
+        // Handle both nested and flat response structures
+        const data = json.data || json;
+
+        // The API returns status: true/false in data sometimes, or we check if data exists
+        if (data && (data.status !== false)) {
             const availability = data.available ? '✅ Available' : '❌ Not Available';
             let domainText = `
-🌐 *Domain Info: ${data.domain}*
+🌐 *Domain Info: ${data.domain || domain}*
 
 🔍 *Status:* ${availability}
 📡 *DNS:* ${data.dns || 'N/A'}
