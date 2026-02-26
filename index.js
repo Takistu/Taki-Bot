@@ -127,9 +127,9 @@ async function startXeonBotInc() {
                 return msg?.message || ""
             },
             msgRetryCounterCache,
-            defaultQueryTimeoutMs: 300000,
-            connectTimeoutMs: 300000,
-            keepAliveIntervalMs: 10000,
+            defaultQueryTimeoutMs: 600000,
+            connectTimeoutMs: 600000,
+            keepAliveIntervalMs: 30000,
         })
 
         // Track if pairing code was requested
@@ -149,10 +149,10 @@ async function startXeonBotInc() {
                     } catch (err) {
                         console.error('⚠️ Pairing code error:', err.message)
                         console.log(chalk.yellow('Will retry on next connection attempt...\n'))
-                        pairingRequested = false
                     }
+                    setTimeout(() => pairingRequested = false, 30000) // Give user 30s before generating another request code
                 }
-            }, 3000)
+            }, 5000)
         }
 
         // Save credentials when they update
