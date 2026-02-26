@@ -8,9 +8,7 @@ async function helpCommand(sock, chatId, message) {
    *🤖 ${settings.botName || 'TakiBot'}*  
    Version: *${settings.version || '3.0.0'}*
    by ${settings.botOwner || 'Mr Taki Taki'}
-   YT : ${global.ytch}
-   Visca Barca e visca 
-   Tanger 💙❤️
+   Visca Barca 💙❤️
 ╚══════════════════╝
 
 *Available Commands:*

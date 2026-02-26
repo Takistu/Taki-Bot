@@ -9,7 +9,7 @@ const settings = {
   maxStoreMessages: 20, 
   storeWriteInterval: 10000,
   description: "This is a bot for all vinland's group use it as you want and enjoy.",
-  version: "3.0.6",
+  version: "3.1.0",
   updateZipUrl: "https://github.com/mruniquehacker/Knightbot-MD/archive/refs/heads/main.zip",
 };
 
