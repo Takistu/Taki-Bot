@@ -37,6 +37,8 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .ss <link>
 ║ ➤ .jid
 ║ ➤ .url
+║ ➤ .bitly <link>
+║ ➤ .tinyurl <link>
 ╚══════════════════╝ 
 
 ╔══════════════════╗
@@ -226,17 +228,17 @@ async function helpCommand(sock, chatId, message) {
 
     try {
         const imagePath = path.join(__dirname, '../assets/bot_image.jpg');
-        
+
         if (fs.existsSync(imagePath)) {
             const imageBuffer = fs.readFileSync(imagePath);
-            
+
             await sock.sendMessage(chatId, {
                 image: imageBuffer,
                 caption: helpMessage
-            },{ quoted: message });
+            }, { quoted: message });
         } else {
             console.error('Bot image not found at:', imagePath);
-            await sock.sendMessage(chatId, { 
+            await sock.sendMessage(chatId, {
                 text: helpMessage
             });
         }

@@ -14,31 +14,55 @@ async function memeCommand(sock, chatId, message, query = '') {
         }
 
         const response = await fetch(apiUrl);
-
-        // Check if response is an image
         const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('image')) {
-            const imageBuffer = await response.buffer();
+        const buffer = await response.buffer();
 
-            const buttons = [
-                { buttonId: '.meme', buttonText: { displayText: '🎭 Another Meme' }, type: 1 },
-                { buttonId: '.joke', buttonText: { displayText: '😄 Joke' }, type: 1 }
-            ];
+        // Use file-type if available or fallback to content-type header
+        let mime = contentType;
+        try {
+            const FileType = require('file-type');
+            const type = await FileType.fromBuffer(buffer);
+            if (type) mime = type.mime;
+        } catch (e) {
+            console.error('FileType detection failed:', e.message);
+        }
 
+        const buttons = [
+            { buttonId: '.meme', buttonText: { displayText: '🎭 Another Meme' }, type: 1 },
+            { buttonId: '.joke', buttonText: { displayText: '😄 Joke' }, type: 1 }
+        ];
+
+        const caption = `> Here's your meme ${captionSuffix}`;
+
+        if (mime.includes('video') || mime.includes('gif')) {
             await sock.sendMessage(chatId, {
-                image: imageBuffer,
-                caption: `> Here's your meme ${captionSuffix}`,
+                video: buffer,
+                caption: caption,
+                gifPlayback: mime.includes('gif'),
+                buttons: buttons,
+                headerType: 1
+            }, { quoted: message });
+        } else if (mime.includes('webp')) {
+            await sock.sendMessage(chatId, {
+                sticker: buffer
+            }, { quoted: message });
+            // For stickers, we might want to send the caption separately if buttons are needed
+            // But buttons with stickers are tricky in some WhatsApp versions
+        } else if (mime.includes('image')) {
+            await sock.sendMessage(chatId, {
+                image: buffer,
+                caption: caption,
                 buttons: buttons,
                 headerType: 1
             }, { quoted: message });
         } else {
-            // If it's not an image, it might be a JSON response with an error or no results
+            // If it's not a recognized media type, it might be a JSON response or error
             if (query) {
                 await sock.sendMessage(chatId, {
                     text: `❌ No memes found for "${query}". Try a different search term!`
                 }, { quoted: message });
             } else {
-                throw new Error('Invalid response type from API');
+                throw new Error('Invalid response type from API: ' + mime);
             }
         }
     } catch (error) {

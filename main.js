@@ -142,6 +142,7 @@ const { anticallCommand, readState: readAnticallState } = require('./commands/an
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
+const shorturlCommand = require('./commands/shorturl');
 
 // Global settings
 global.packname = settings.packname;
@@ -938,6 +939,18 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.ss') || userMessage.startsWith('.ssweb') || userMessage.startsWith('.screenshot'):
                 const ssCommandLength = userMessage.startsWith('.screenshot') ? 11 : (userMessage.startsWith('.ssweb') ? 6 : 3);
                 await handleSsCommand(sock, chatId, message, userMessage.slice(ssCommandLength).trim());
+                break;
+            case userMessage.startsWith('.bitly'):
+                {
+                    const urlToShort = userMessage.slice(7).trim();
+                    await shorturlCommand(sock, chatId, message, 'bitly', urlToShort);
+                }
+                break;
+            case userMessage.startsWith('.tinyurl'):
+                {
+                    const urlToShort = userMessage.slice(9).trim();
+                    await shorturlCommand(sock, chatId, message, 'tinyurl', urlToShort);
+                }
                 break;
             case userMessage.startsWith('.areact') || userMessage.startsWith('.autoreact') || userMessage.startsWith('.autoreaction'):
                 await handleAreactCommand(sock, chatId, message, isOwnerOrSudoCheck);
