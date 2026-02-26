@@ -4,6 +4,7 @@ const fsPromises = require('fs/promises');
 const fse = require('fs-extra');
 const path = require('path');
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const { toVideo } = require('../lib/converter');
 
 const tempDir = './temp';
 if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
@@ -11,40 +12,57 @@ if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 const scheduleFileDeletion = (filePath) => {
     setTimeout(async () => {
         try {
-            await fse.remove(filePath);
-            console.log(`File deleted: ${filePath}`);
+            if (fs.existsSync(filePath)) {
+                await fse.remove(filePath);
+            }
         } catch (error) {
             console.error(`Failed to delete file:`, error);
         }
-    }, 10000); // 5 minutes
+    }, 10000);
 };
 
 const convertStickerToImage = async (sock, quotedMessage, chatId) => {
     try {
         const stickerMessage = quotedMessage.stickerMessage;
         if (!stickerMessage) {
-            await sock.sendMessage(chatId, { text: 'Reply to a sticker with .simage to convert it.' });
+            await sock.sendMessage(chatId, { text: '❌ Please reply to a sticker with .simage to convert it.' });
             return;
         }
 
+        const isAnimated = stickerMessage.isAnimated;
         const stickerFilePath = path.join(tempDir, `sticker_${Date.now()}.webp`);
-        const outputImagePath = path.join(tempDir, `converted_image_${Date.now()}.png`);
 
+        // Download sticker
         const stream = await downloadContentFromMessage(stickerMessage, 'sticker');
         let buffer = Buffer.from([]);
         for await (const chunk of stream) buffer = Buffer.concat([buffer, chunk]);
-
         await fsPromises.writeFile(stickerFilePath, buffer);
-        await sharp(stickerFilePath).toFormat('png').toFile(outputImagePath);
 
-        const imageBuffer = await fsPromises.readFile(outputImagePath);
-        await sock.sendMessage(chatId, { image: imageBuffer, caption: 'Here is the converted image!' });
+        if (isAnimated) {
+            // Convert animated sticker to MP4
+            await sock.sendMessage(chatId, { text: '⏳ Converting animated sticker to video...' });
+            const videoBuffer = await toVideo(buffer, 'webp');
+            await sock.sendMessage(chatId, {
+                video: videoBuffer,
+                caption: '✅ Animated sticker converted to MP4!',
+                gifPlayback: true
+            });
+        } else {
+            // Convert static sticker to PNG
+            const outputImagePath = path.join(tempDir, `converted_${Date.now()}.png`);
+            await sharp(buffer).toFormat('png').toFile(outputImagePath);
+            const imageBuffer = await fsPromises.readFile(outputImagePath);
+            await sock.sendMessage(chatId, {
+                image: imageBuffer,
+                caption: '✅ Sticker converted to PNG!'
+            });
+            scheduleFileDeletion(outputImagePath);
+        }
 
         scheduleFileDeletion(stickerFilePath);
-        scheduleFileDeletion(outputImagePath);
     } catch (error) {
-        console.error('Error converting sticker to image:', error);
-        await sock.sendMessage(chatId, { text: 'An error occurred while converting the sticker.' });
+        console.error('Error converting sticker:', error);
+        await sock.sendMessage(chatId, { text: '❌ An error occurred while converting the sticker.' });
     }
 };
 
