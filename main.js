@@ -548,8 +548,11 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 }
                 await handleAntitagCommand(sock, chatId, userMessage, senderId, isSenderAdmin, message);
                 break;
-            case userMessage === '.meme':
-                await memeCommand(sock, chatId, message);
+            case userMessage.startsWith('.meme'):
+                {
+                    const query = userMessage.slice(5).trim();
+                    await memeCommand(sock, chatId, message, query);
+                }
                 break;
             case userMessage === '.joke':
                 await jokeCommand(sock, chatId, message);

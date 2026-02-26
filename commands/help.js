@@ -97,7 +97,7 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .remini
 ║ ➤ .crop <reply to image>
 ║ ➤ .tgsticker <Link>
-║ ➤ .meme
+║ ➤ .meme <query>
 ║ ➤ .take <packname> 
 ║ ➤ .emojimix <emj1>+<emj2>
 ║ ➤ .igs <insta link>
