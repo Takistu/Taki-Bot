@@ -83,7 +83,7 @@ const { truthCommand } = require('./commands/truth');
 const { clearCommand } = require('./commands/clear');
 const pingCommand = require('./commands/ping');
 const aliveCommand = require('./commands/alive');
-const blurCommand = require('./commands/img-blur');
+const canvasFilterCommand = require('./commands/canvas-filters');
 const { welcomeCommand, handleJoinEvent } = require('./commands/welcome');
 const { goodbyeCommand, handleLeaveEvent } = require('./commands/goodbye');
 const githubCommand = require('./commands/github');
@@ -674,9 +674,20 @@ async function handleMessages(sock, messageUpdate, printLog) {
                     await setMentionCommand(sock, chatId, message, isOwner);
                 }
                 break;
+            case userMessage.startsWith('.pixelate'):
             case userMessage.startsWith('.blur'):
-                const quotedMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-                await blurCommand(sock, chatId, message, quotedMessage);
+            case userMessage.startsWith('.blurple2'):
+            case userMessage.startsWith('.color'):
+            case userMessage.startsWith('.greyscale'):
+            case userMessage.startsWith('.grayscale'):
+            case userMessage.startsWith('.sepia'):
+            case userMessage.startsWith('.threshold'):
+                {
+                    const parts = userMessage.trim().split(/\s+/);
+                    const type = parts[0].slice(1);
+                    const args = parts.slice(1);
+                    await canvasFilterCommand(sock, chatId, message, type, args);
+                }
                 break;
             case userMessage.startsWith('.welcome'):
                 if (isGroup) {

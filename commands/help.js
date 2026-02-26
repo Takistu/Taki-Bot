@@ -91,7 +91,13 @@ async function helpCommand(sock, chatId, message) {
 
 ╔══════════════════╗
 🎨 *Image/Sticker Commands*:
-║ ➤ .blur <image>
+║ ➤ .pixelate (reply)
+║ ➤ .blur (reply)
+║ ➤ .blurple2 (reply)
+║ ➤ .color <hex> (reply)
+║ ➤ .greyscale (reply)
+║ ➤ .sepia (reply)
+║ ➤ .threshold <num> (reply)
 ║ ➤ .simage <reply to sticker>
 ║ ➤ .sticker <reply to image>
 ║ ➤ .removebg
