@@ -3,7 +3,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
-const { TelegraPh } = require('../lib/uploader');
+const { UploadFileUgu } = require('../lib/uploader');
 
 async function canvasFilterCommand(sock, chatId, message, type, args = []) {
     let targetMessage = message;
@@ -48,11 +48,14 @@ async function canvasFilterCommand(sock, chatId, message, type, args = []) {
         // Ensure it's PNG for the API
         await sharp(buffer).png().toFile(inputPath);
 
-        // Upload to get a URL
-        const imageUrl = await TelegraPh(inputPath);
+        // Upload to get a URL via Uguu.se (as requested/suggested for .url logic)
+        const uploadRes = await UploadFileUgu(inputPath);
+        const imageUrl = uploadRes.url;
 
-        // Map filter types to API endpoints
-        const baseUrl = 'https://some-random-api.com/canvas/filter';
+        if (!imageUrl) throw new Error('Failed to upload image to processing server');
+
+        // Map filter types to API endpoints (Note the 'api.' prefix)
+        const baseUrl = 'https://api.some-random-api.com/canvas/filter';
         const userArg = args[0] || '';
         let apiUrl = '';
 
@@ -111,8 +114,15 @@ async function canvasFilterCommand(sock, chatId, message, type, args = []) {
 
     } catch (error) {
         console.error(`Error in ${type} command:`, error);
+        let errorMsg = error.message;
+        if (error.response?.data) {
+            try {
+                const dataStr = Buffer.from(error.response.data).toString();
+                errorMsg += ` - ${dataStr}`;
+            } catch (e) { }
+        }
         await sock.sendMessage(chatId, {
-            text: `❌ Error: ${error.message || 'Failed to apply filter'}`
+            text: `❌ Error: ${errorMsg || 'Failed to apply filter'}`
         }, { quoted: message });
     } finally {
         if (fs.existsSync(inputPath)) {
