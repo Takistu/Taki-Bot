@@ -150,7 +150,6 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .goodnight
 ║ ➤ .roseday
 ║ ➤ .character @user
-║ ➤ .wasted @user
 ║ ➤ .ship @user
 ║ ➤ .simp @user
 ║ ➤ .stupid @user [text]
@@ -207,7 +206,8 @@ async function helpCommand(sock, chatId, message) {
 ║ ➤ .glass 
 ║ ➤ .jail 
 ║ ➤ .passed 
-║ ➤ .triggered
+║ ➤ .triggered 
+║ ➤ .wasted 
 ╚══════════════════╝
 
 ╔══════════════════╗

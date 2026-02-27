@@ -93,7 +93,7 @@ const { handleChatbotCommand, handleChatbotResponse } = require('./commands/chat
 const takeCommand = require('./commands/take');
 const { flirtCommand } = require('./commands/flirt');
 const characterCommand = require('./commands/character');
-const wastedCommand = require('./commands/wasted');
+const canvasOverlayCommand = require('./commands/canvas-overlays');
 const shipCommand = require('./commands/ship');
 const groupInfoCommand = require('./commands/groupinfo');
 const resetlinkCommand = require('./commands/resetlink');
@@ -1086,11 +1086,10 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.jail'):
             case userMessage.startsWith('.passed'):
             case userMessage.startsWith('.triggered'):
+            case userMessage.startsWith('.wasted'):
                 {
-                    const parts = userMessage.trim().split(/\s+/);
-                    const sub = userMessage.slice(1).split(/\s+/)[0];
-                    const args = [sub, ...parts.slice(1)];
-                    await miscCommand(sock, chatId, message, args);
+                    const type = userMessage.slice(1).split(/\s+/)[0];
+                    await canvasOverlayCommand(sock, chatId, message, type);
                 }
                 break;
             case userMessage.startsWith('.animu'):
